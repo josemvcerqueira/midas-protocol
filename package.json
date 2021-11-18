@@ -3,8 +3,7 @@
     "prepare": "husky install",
     "lint": "eslint --fix --ext .js,.ts .",
     "type-check": "tsc --pretty --noEmit",
-    "format": "prettier --write **/*.{js,ts}",
-    "pre-commit": "yarn format && yarn lint && yarn type-check && yarn solhint",
+    "pre-commit": "yarn lint && yarn type-check && yarn solhint",
     "solhint": "solhint contracts/**/*.sol",
     "test": "npx hardhat test"
   },

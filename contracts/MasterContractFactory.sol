@@ -30,7 +30,7 @@ contract MasterContractFactory {
   /*
   *@dev clones a master contract using the nondeterministic minimal proxy implementation
   * Master contract should follow the IMasterContract implementation
-  * It emits the CloneDeployed event
+  * It calls the _initialize function to update state and emit the event CloneDeployed
   * It accepts ETH which is passed to the clone
   *@param masterContract The contract to be cloned
   *@param data The data to be passed after deployment to the initialize function 
@@ -41,17 +41,13 @@ contract MasterContractFactory {
 
     cloneAddress = Clones.clone(masterContract);
 
-    masterContractOf[cloneAddress] = masterContract;
-
-    IMasterContract(cloneAddress).initialize{value: msg.value}(data);
-
-    emit CloneDeployed(masterContract, data, cloneAddress);  
+   _initialize(masterContract, cloneAddress, data, msg.value); 
   }
 
   /*
   *@dev clones a master contract using the deterministic minimal proxy implementation using the data as the salt
   * Master contract should follow the IMasterContract implementation
-  * It emits the CloneDeployed event
+  * It calls the _initialize function to update state and emit the event CloneDeployed
   * It accepts ETH which is passed to the clone
   *@param masterContract The contract to be cloned
   *@param data The data to be passed after deployment to the initialize function 
@@ -65,9 +61,22 @@ contract MasterContractFactory {
 
     cloneAddress = Clones.cloneDeterministic(masterContract, salt);
 
+    _initialize(masterContract, cloneAddress, data, msg.value);
+  }
+
+
+  /*
+  *@dev updated the state to map the clone address to the master address, initializes the clone and emits the event CloneDeployed
+  *@param masterContract the contract to be cloned
+  *@param cloneAddress the address of the cloned contract
+  *@param data data to be passed to the initialize function
+  *@param value the amount of ETH to be passed to the initialize function
+  */
+  function _initialize(address masterContract, address cloneAddress, bytes calldata data, uint value)     private {
+    
     masterContractOf[cloneAddress] = masterContract;
 
-    IMasterContract(cloneAddress).initialize{value: msg.value}(data);
+    IMasterContract(cloneAddress).initialize{value: value}(data);
 
     emit CloneDeployed(masterContract, data, cloneAddress); 
   }
