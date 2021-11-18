@@ -120,6 +120,11 @@ module.exports = {
     "unicorn/template-indent": "warn",
     "unicorn/throw-new-error": "error",
     // Override the double quote rule to single quote
-    "prettier/prettier": ["error", {"singleQuote": true, "parser": "flow"}]
+    "prettier/prettier": ["error", {"singleQuote": true, "parser": "flow"}],
+    "node/no-missing-import": ["error", {
+            "allowModules": [],
+            "resolvePaths": ["/path/to/a/modules/directory"],
+            "tryExtensions": [".js", ".json", ".node", ".ts"]
+        }]
   },
 };
