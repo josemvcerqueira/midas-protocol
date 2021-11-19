@@ -9,7 +9,7 @@ contract MasterContractFactory {
   // EVENTS 
   event CloneDeployed(address indexed mastercontract, bytes data, address indexed clonedAddress);
 
-  // STATE VARIABLES
+  // STATE
   mapping(address => address) public masterContractOf;
 
 
