@@ -58,16 +58,16 @@ describe('MasterContractFactory', () => {
 
   describe('function clone', () => {
     it('should deploy a clone of the master contract nondeterministically', async () => {
-      expect(
-        await masterContractFactory.clone(mockMasterContract.address, data)
+      await expect(
+        masterContractFactory.clone(mockMasterContract.address, data)
       ).to.emit(masterContractFactory, 'CloneDeployed');
     });
     it('should nondeterministically deploy clones with the same data', async () => {
       await expect(
-        await masterContractFactory.clone(mockMasterContract.address, data)
+        masterContractFactory.clone(mockMasterContract.address, data)
       ).to.emit(masterContractFactory, 'CloneDeployed');
       await expect(
-        await masterContractFactory.clone(mockMasterContract.address, data)
+        masterContractFactory.clone(mockMasterContract.address, data)
       ).to.emit(masterContractFactory, 'CloneDeployed');
     });
 
@@ -97,7 +97,7 @@ describe('MasterContractFactory', () => {
   describe('function deterministicClone', () => {
     it('should deploy a clone of the master contract deterministically', async () => {
       await expect(
-        await masterContractFactory.deterministicClone(
+        masterContractFactory.deterministicClone(
           mockMasterContract.address,
           data
         )
@@ -106,7 +106,7 @@ describe('MasterContractFactory', () => {
 
     it('should not deterministically deploy a clone twice with the same data', async () => {
       await expect(
-        await masterContractFactory.deterministicClone(
+        masterContractFactory.deterministicClone(
           mockMasterContract.address,
           data
         )
@@ -121,7 +121,7 @@ describe('MasterContractFactory', () => {
 
     it('should not deterministically deploy a clone twice with different data', async () => {
       await expect(
-        await masterContractFactory.deterministicClone(
+        masterContractFactory.deterministicClone(
           mockMasterContract.address,
           data
         )
@@ -131,7 +131,7 @@ describe('MasterContractFactory', () => {
         [NAME, 'PT2']
       );
       await expect(
-        await masterContractFactory.deterministicClone(
+        masterContractFactory.deterministicClone(
           mockMasterContract.address,
           data2
         )
