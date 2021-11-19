@@ -1,7 +1,8 @@
-import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { MockMasterContract, MasterContractFactory } from '../typechain';
 import MasterContractFactoryJson from '../artifacts/contracts/MasterContractFactory.sol/MasterContractFactory.json';
+import { expect } from 'chai';
+import { deploy } from '../lib/test-utils';
 
 describe('MasterContractFactory', () => {
   let mockMasterContract: MockMasterContract;
@@ -16,23 +17,13 @@ describe('MasterContractFactory', () => {
   );
 
   beforeEach(async () => {
-    const [MockMCFactory, MCFFactory] = await Promise.all([
-      ethers.getContractFactory('MockMasterContract'),
-      ethers.getContractFactory('MasterContractFactory'),
-    ]);
-
-    const [_mockMasterContract, _masterContractFactory] = await Promise.all([
-      MockMCFactory.deploy(),
-      MCFFactory.deploy(),
-    ]);
+    const [_mockMasterContract, _masterContractFactory] = await deploy(
+      ['MockMasterContract', 'MasterContractFactory'],
+      []
+    );
 
     mockMasterContract = _mockMasterContract;
     masterContractFactory = _masterContractFactory;
-
-    await Promise.all([
-      mockMasterContract.deployed(),
-      masterContractFactory.deployed(),
-    ]);
   });
 
   describe('function predictCloneAddress', () => {
