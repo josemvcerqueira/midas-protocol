@@ -1,8 +1,9 @@
-import { ethers } from 'hardhat';
-import { MockMasterContract, MasterContractFactory } from '../typechain';
-import MasterContractFactoryJson from '../artifacts/contracts/MasterContractFactory.sol/MasterContractFactory.json';
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
+
+import MasterContractFactoryJson from '../artifacts/contracts/MasterContractFactory.sol/MasterContractFactory.json';
 import { deploy } from '../lib/test-utils';
+import { MasterContractFactory, MockMasterContract } from '../typechain';
 
 describe('MasterContractFactory', () => {
   let mockMasterContract: MockMasterContract;

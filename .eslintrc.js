@@ -5,7 +5,7 @@ module.exports = {
     mocha: true,
     node: true,
   },
-  plugins: ["@typescript-eslint", "unicorn"],
+  plugins: ["@typescript-eslint", "unicorn", "simple-import-sort"],
   extends: [
     "standard",
     "plugin:prettier/recommended",
@@ -125,6 +125,9 @@ module.exports = {
             "allowModules": [],
             "resolvePaths": ["/path/to/a/modules/directory"],
             "tryExtensions": [".js", ".json", ".node", ".ts"]
-        }]
+        }],
+    //@link https://github.com/lydell/eslint-plugin-simple-import-sort 
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error"
   },
 };
