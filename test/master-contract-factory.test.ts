@@ -16,6 +16,10 @@ describe('MasterContractFactory', () => {
     [NAME, SYMBOL]
   );
 
+  const masterContractInterface = new ethers.utils.Interface(
+    MasterContractFactoryJson.abi
+  );
+
   beforeEach(async () => {
     const [_mockMasterContract, _masterContractFactory] = await deploy(
       ['MockMasterContract', 'MasterContractFactory'],
@@ -41,9 +45,6 @@ describe('MasterContractFactory', () => {
           ethers.utils.keccak256(data)
         );
 
-      const masterContractInterface = new ethers.utils.Interface(
-        MasterContractFactoryJson.abi
-      );
       const log = masterContractInterface.parseLog(
         cloneAddressTXReceipt.logs[0]
       );
@@ -67,6 +68,22 @@ describe('MasterContractFactory', () => {
       await expect(
         await masterContractFactory.clone(mockMasterContract.address, data)
       ).to.emit(masterContractFactory, 'CloneDeployed');
+    });
+
+    it('should update the state variable masterContractOf', async () => {
+      const cloneAddressTXReceipt = await (
+        await masterContractFactory.clone(mockMasterContract.address, data)
+      ).wait();
+
+      const log = masterContractInterface.parseLog(
+        cloneAddressTXReceipt.logs[0]
+      );
+
+      const { clonedAddress } = log.args;
+
+      expect(
+        await masterContractFactory.masterContractOf(clonedAddress)
+      ).to.be.equal(mockMasterContract.address);
     });
 
     it('should not nondeterministically clone a ZERO Address', async () => {
@@ -118,6 +135,25 @@ describe('MasterContractFactory', () => {
           data2
         )
       ).to.emit(masterContractFactory, 'CloneDeployed');
+    });
+
+    it('should update the state variable masterContractOf', async () => {
+      const cloneAddressTXReceipt = await (
+        await masterContractFactory.deterministicClone(
+          mockMasterContract.address,
+          data
+        )
+      ).wait();
+
+      const log = masterContractInterface.parseLog(
+        cloneAddressTXReceipt.logs[0]
+      );
+
+      const { clonedAddress } = log.args;
+
+      expect(
+        await masterContractFactory.masterContractOf(clonedAddress)
+      ).to.be.equal(mockMasterContract.address);
     });
 
     it('should not deterministically clone a ZERO Address', async () => {
