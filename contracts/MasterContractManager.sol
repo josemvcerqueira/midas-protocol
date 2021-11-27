@@ -69,7 +69,7 @@ contract MasterContractManager is MasterContractFactory, Ownable, EIP712 {
       *@condition2 the user cannot be a registered protocol or clone
       *@condition3 the masterContract must be whitelisted
       */
-        require(user ==msg.sender, "MCM: user must be the sender");
+        require(user == msg.sender, "MCM: user must be the sender");
         require(masterContractOf[user] == address(0), "MCM: user must not be registered");
         require(whitelistedMasterContracts[masterContract], "MCM: masterC not registered");
       } else {

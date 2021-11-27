@@ -7,4 +7,9 @@ interface IMasterContract {
   *@param data Any arbitrary series of arguments abi encoded  
   */
   function initialize(bytes calldata data) external payable;
+
+  /*
+  *@notice This function calls the masterContractManager registerProtocol to register
+  */  
+  function register(address masterContractManager) external;
 }
