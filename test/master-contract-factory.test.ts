@@ -22,16 +22,30 @@ describe('MasterContractFactory', () => {
   );
 
   beforeEach(async () => {
-    const [_mockMasterContract, _masterContractFactory] = await deploy(
+    [mockMasterContract, masterContractFactory] = await deploy(
       ['MockMasterContract', 'MasterContractFactory'],
       []
     );
-
-    mockMasterContract = _mockMasterContract;
-    masterContractFactory = _masterContractFactory;
   });
 
   describe('function predictCloneAddress', () => {
+    it('should emit event CloneDeployed with the correct args', async () => {
+      const predictedCloneAddress =
+        await masterContractFactory.predictCloneAddress(
+          mockMasterContract.address,
+          ethers.utils.keccak256(data)
+        );
+
+      await expect(
+        masterContractFactory.deterministicClone(
+          mockMasterContract.address,
+          data
+        )
+      )
+        .to.emit(masterContractFactory, 'CloneDeployed')
+        .withArgs(mockMasterContract.address, data, predictedCloneAddress);
+    });
+
     it('should correctly predict an address deterministically', async function () {
       const cloneAddressTX = await masterContractFactory.deterministicClone(
         mockMasterContract.address,
