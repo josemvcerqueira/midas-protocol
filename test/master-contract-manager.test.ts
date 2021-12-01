@@ -254,7 +254,7 @@ describe('MasterContractManager', () => {
         )
       ).to.revertedWith('MCM: invalid user signature');
     });
-    it.only('WITH PERMIT: updates states properly if ECDSA recovers the correct public address', async () => {
+    it('WITH PERMIT: updates states properly if ECDSA recovers the correct public address', async () => {
       expect(
         await masterContractManager.masterContractApprovals(
           mockMasterContract.address,
