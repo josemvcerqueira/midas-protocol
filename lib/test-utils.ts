@@ -1,3 +1,5 @@
+// eslint-disable-next-line node/no-extraneous-import
+import { BigNumber } from '@ethersproject/bignumber';
 // eslint-disable-next-line node/no-unpublished-import
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 // eslint-disable-next-line node/no-unpublished-import
@@ -57,14 +59,13 @@ export const getMidasKingdomApprovalDigest = (
   user: SignerWithAddress,
   masterContractAddress: string,
   approveState: boolean,
-  nonce: number,
+  nonce: BigNumber,
   chainId: number = 1
 ) => {
   const DOMAIN_SEPARATOR = getMidasKingdomDomainSeparator(
     midasKingdom.address,
     chainId
   );
-
   const message = defaultAbiCoder.encode(
     ['bytes32', 'bytes32', 'address', 'address', 'bool', 'uint256'],
     [
@@ -102,9 +103,9 @@ export const setMasterContractApproval = async (
 ) => {
   if (!withPermit)
     return masterKingdom
-      .connect(user)
+      .connect(from)
       .setMasterContractApproval(
-        from.address,
+        user.address,
         masterContractAddress,
         approvedState,
         0,
@@ -119,7 +120,7 @@ export const setMasterContractApproval = async (
     user,
     masterContractAddress,
     approvedState,
-    nonce.toNumber(),
+    nonce,
     chainId
   );
   const { v, r, s } = ecsign(
@@ -128,7 +129,7 @@ export const setMasterContractApproval = async (
   );
 
   return masterKingdom
-    .connect(user)
+    .connect(from)
     .setMasterContractApproval(
       user.address,
       masterContractAddress,
