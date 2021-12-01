@@ -6,7 +6,7 @@
     "pre-commit": "yarn lint && yarn type-check && yarn solhint",
     "solhint": "solhint contracts/**/*.sol",
     "test": "npx hardhat test"
-  },
+    },
   "devDependencies": {
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
