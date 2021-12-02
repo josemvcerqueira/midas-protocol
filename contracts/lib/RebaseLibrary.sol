@@ -86,4 +86,62 @@ library RebaseLibrary {
         total.base -= base.toUint128();
         return (total, elastic);
     }
+
+    /*@dev add base and elastic to a Rebase pair changing the ratio
+     *@param total -> Rebase struct which represents a base/elastic pair
+     *@param base -> the base to be added
+     *@param elastic -> the elastic to be added
+     *@returns total -> new Rebase pair modified with the addition of the base and elastic
+     */
+    function add(
+        Rebase memory total,
+        uint256 base,
+        uint256 elastic
+    ) internal pure returns (Rebase memory) {
+        total.base += base.toUint128();
+        total.elastic += elastic.toUint128();
+        return total;
+    }
+
+    /*@dev substracts base and elastic to a Rebase pair changing the ratio
+     *@param total -> Rebase struct which represents a base/elastic pair
+     *@param base -> the base to be substracted
+     *@param elastic -> the elastic to be substracted
+     *@returns total -> new Rebase pair modified with the addition of the base and elastic
+     */
+    function sub(
+        Rebase memory total,
+        uint256 base,
+        uint256 elastic
+    ) internal pure returns (Rebase memory) {
+        total.base -= base.toUint128();
+        total.elastic -= elastic.toUint128();
+        return total;
+    }
+
+    /*@dev adds elastic to a Rebase pair
+     *@important THIS UPDATES THE STORAGE OF THE CALLING CONTRACT (total)
+     *@param total -> Rebase struct which represents a base/elastic pair, it will be updated
+     *@param elastic -> the base to be added
+     *@returns total -> new Rebase pair modified with the addition of the base and elastic
+     */
+    function addElastic(Rebase storage total, uint256 elastic)
+        internal
+        returns (uint256 newElastic)
+    {
+        newElastic = total.elastic += elastic.toUint128();
+    }
+
+    /*@dev subtracts elastic to a Rebase pair
+     *@important THIS UPDATES THE STORAGE OF THE CALLING CONTRACT (total)
+     *@param total -> Rebase struct which represents a base/elastic pair, it will be updated
+     *@param elastic -> the base to be substracted
+     *@returns total -> new Rebase pair modified with the addition of the base and elastic
+     */
+    function subElastic(Rebase storage total, uint256 elastic)
+        internal
+        returns (uint256 newElastic)
+    {
+        newElastic = total.elastic -= elastic.toUint128();
+    }
 }

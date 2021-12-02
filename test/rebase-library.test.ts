@@ -130,4 +130,52 @@ describe('RebaseLibrary', () => {
       expect(expectedTotal.elastic).to.be.equal(newTotal.elastic);
     });
   });
+  it('adds base and elastic to a base/elastic pair', async () => {
+    const total = { base: 10, elastic: 15 };
+    const base = 3;
+    const elastic = 2;
+
+    await mockRebaseLibrary.set(total.base, total.elastic);
+    await mockRebaseLibrary.add2(base, elastic);
+
+    const expectedTotal = await mockRebaseLibrary.total();
+
+    expect(expectedTotal.base).to.be.equal(total.base + base);
+    expect(expectedTotal.elastic).to.be.equal(total.elastic + elastic);
+  });
+  it('subtracts base and elastic to a base/elastic pair', async () => {
+    const total = { base: 10, elastic: 15 };
+    const base = 3;
+    const elastic = 2;
+
+    await mockRebaseLibrary.set(total.base, total.elastic);
+    await mockRebaseLibrary.sub2(base, elastic);
+
+    const expectedTotal = await mockRebaseLibrary.total();
+
+    expect(expectedTotal.base).to.be.equal(total.base - base);
+    expect(expectedTotal.elastic).to.be.equal(total.elastic - elastic);
+  });
+  it('adds elastic to a Rebase pair', async () => {
+    const total = { base: 10, elastic: 15 };
+    const elastic = 2;
+
+    await mockRebaseLibrary.set(total.base, total.elastic);
+    await mockRebaseLibrary.addElastic(elastic);
+
+    const expectedTotal = await mockRebaseLibrary.total();
+    expect(expectedTotal.base).to.be.equal(total.base);
+    expect(expectedTotal.elastic).to.be.equal(total.elastic + elastic);
+  });
+  it('subtracts elastic to a Rebase pair', async () => {
+    const total = { base: 10, elastic: 15 };
+    const elastic = 2;
+
+    await mockRebaseLibrary.set(total.base, total.elastic);
+    await mockRebaseLibrary.subElastic(elastic);
+
+    const expectedTotal = await mockRebaseLibrary.total();
+    expect(expectedTotal.base).to.be.equal(total.base);
+    expect(expectedTotal.elastic).to.be.equal(total.elastic - elastic);
+  });
 });

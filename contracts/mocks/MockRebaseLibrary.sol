@@ -41,4 +41,20 @@ contract MockRebaseLibrary {
         total = _total;
         elastic = _elastic;
     }
+
+    function add2(uint256 _base, uint256 _elastic) external {
+        total = total.add(_base, _elastic);
+    }
+
+    function sub2(uint256 _base, uint256 _elastic) external {
+        total = total.sub(_base, _elastic);
+    }
+
+    function addElastic(uint256 _elastic) external {
+        total.addElastic(_elastic);
+    }
+
+    function subElastic(uint256 _elastic) external {
+        total.subElastic(_elastic);
+    }
 }
