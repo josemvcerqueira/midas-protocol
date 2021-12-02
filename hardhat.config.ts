@@ -3,6 +3,7 @@ import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import 'hardhat-gas-reporter';
 import 'solidity-coverage';
+import '@nomiclabs/hardhat-solhint';
 
 import * as dotenv from 'dotenv';
 import { HardhatUserConfig, task } from 'hardhat/config';
