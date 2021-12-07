@@ -38,7 +38,7 @@ contract MasterContractManager is MasterContractFactory, Ownable, EIP712 {
      *@dev build the domain separator for EIP712 and cache it
      */
     // solhint-disable-next-line no-empty-blocks
-    constructor() EIP712("Midas Kingdom", "V1") {}
+    constructor() EIP712("Midas Treasury", "V1") {}
 
     // PURE FUNCTIONS
 

@@ -33,7 +33,7 @@ export const deploy = async (
   );
 };
 
-export const getMidasKingdomDomainSeparator = (
+export const getMidasTreasuryDomainSeparator = (
   address: string,
   chainId: number
 ) =>
@@ -46,7 +46,7 @@ export const getMidasKingdomDomainSeparator = (
             'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'
           )
         ),
-        keccak256(toUtf8Bytes('Midas Kingdom')),
+        keccak256(toUtf8Bytes('Midas Treasury')),
         keccak256(toUtf8Bytes('V1')),
         chainId,
         address,
@@ -62,7 +62,7 @@ export const getMidasKingdomApprovalDigest = (
   nonce: BigNumber,
   chainId: number = 1
 ) => {
-  const DOMAIN_SEPARATOR = getMidasKingdomDomainSeparator(
+  const DOMAIN_SEPARATOR = getMidasTreasuryDomainSeparator(
     midasKingdom.address,
     chainId
   );

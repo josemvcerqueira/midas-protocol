@@ -20,7 +20,7 @@ import "./MasterContractManager.sol";
  * Tokens have to be sent via the deposit function; otherwise, they will be forever lost
  *@import Rebasing tokens are not supported and WILL cause loss of funds.
  */
-contract MidasKingdom is Ownable {
+contract MidasTreasury is Ownable {
     using SafeERC20 for IERC20;
     using RebaseLibrary for Rebase;
     using SafeCast for uint256;

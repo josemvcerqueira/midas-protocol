@@ -6,7 +6,7 @@ import { ethers } from 'hardhat';
 import { PRIVATE_KEYS } from '../lib/constants';
 import {
   deploy,
-  getMidasKingdomDomainSeparator,
+  getMidasTreasuryDomainSeparator,
   setMasterContractApproval,
 } from '../lib/test-utils';
 import { MasterContractManager, MockMasterContract } from '../typechain';
@@ -40,7 +40,7 @@ describe('MasterContractManager', () => {
   it('returns the domain separator', async () => {
     const chainId = await bob.getChainId();
     expect(await masterContractManager.DOMAIN_SEPARATOR()).to.be.equal(
-      getMidasKingdomDomainSeparator(masterContractManager.address, chainId)
+      getMidasTreasuryDomainSeparator(masterContractManager.address, chainId)
     );
   });
 
