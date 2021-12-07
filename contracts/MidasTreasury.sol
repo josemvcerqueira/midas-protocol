@@ -208,6 +208,15 @@ contract MidasTreasury is Ownable {
         return totals[token].toElastic(shares, roundUp);
     }
 
+    /*
+     *@dev Allows someone to deposit tokens in the contract and assigns shares based on the total amount
+     *@param from Contract/User which is depositing the tokens
+     *@param to Contract/User to receive the shares
+     *@param amount The amount of tokens to deposit
+     *@param shares The amount of shares he wishes to deposit
+     *@return A tuple with first value being amount of tokens deposited and second the amount of shares obtained
+     *@event LogDeposit
+     */
     function deposit(
         IERC20 _token,
         address from,
@@ -281,6 +290,15 @@ contract MidasTreasury is Ownable {
         sharesObtained = shares;
     }
 
+    /*
+     *@dev Allows someone to withdraw their tokens in exchange for shares
+     *@param from Contract/User that own the shares to be exchanged for tokens
+     *@param to Contract/User that will receive the tokens
+     *@param amount The amount of tokens the `from` address wishes to withdraw
+     *@param shares The amount of shares he wishes to exchange for tokens
+     *@return A tuple with first value being amount of tokens received and second the amount of shares exchanged for
+     *@event LogWithdraw
+     */
     function withdraw(
         IERC20 _token,
         address from,
@@ -411,6 +429,16 @@ contract MidasTreasury is Ownable {
         emit LogFlashLoan(address(borrower), token, amount, fee, receiver);
     }
 
+    /*
+     *@dev It forces the strategy to harvest profits and update it's balance. Also can replenish or collect tokens from/to the strategy.
+     *@param token The token to which to harvest
+     *@param rebalance If true it checks with the strategy if the balance is within the target level and rebalances
+     *@param maxChangeAmount Maximum amount of tokens Midas Treasury can send or retrieve from the strategy to rebalance the contracts
+     *@event LogStrategyProfit If a profit was incurred after the harvest
+     *@event LogStrategyLoss If a loss was incurred after the harvest
+     *@event LogStrategyInvest If the balance of the strategy contract is below the target amount and `rebalance` is true
+     *@event LogStartegyDivest If the balance of the strategy contract is above the target amount and `rebalance` is true
+     */
     function harvest(
         IERC20 token,
         bool rebalance,
