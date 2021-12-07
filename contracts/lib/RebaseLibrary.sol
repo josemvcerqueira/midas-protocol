@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 struct Rebase {
     uint128 elastic;
