@@ -9,7 +9,7 @@ interface IStrategy {
     function invest(uint256 amount) external;
 
     /*
-     *@dev Harvest any profit made converted to the asset and pass to the caller
+     *@dev Stores Converts profits/loss back to the original strategy token to be ready to be withdrawn
      *@param balance The amount of tokens the caller thinks he has invested
      *@param sender the address of the initiator of this transaction. Can be used for reimbursements,etc.
      *@return delta The delta (+profit or -loss) that occured in contraste to balance

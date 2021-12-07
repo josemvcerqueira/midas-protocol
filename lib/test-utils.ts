@@ -112,7 +112,6 @@ export const setMasterContractApproval = async (
         '0x0000000000000000000000000000000000000000000000000000000000000000',
         '0x0000000000000000000000000000000000000000000000000000000000000000'
       );
-
   const nonce = await masterKingdom.nonces(user.address);
   const chainId = (await user.provider?.getNetwork())?.chainId;
   const digest = getMidasKingdomApprovalDigest(
@@ -127,7 +126,6 @@ export const setMasterContractApproval = async (
     Buffer.from(digest.slice(2), 'hex'),
     Buffer.from(privateKey.replace('0x', ''), 'hex')
   );
-
   return masterKingdom
     .connect(from)
     .setMasterContractApproval(
