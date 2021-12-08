@@ -11,7 +11,7 @@ import { MasterContractManager } from '../typechain';
 
 const { keccak256, toUtf8Bytes, defaultAbiCoder, solidityPack } = ethers.utils;
 
-export const MIDAS_KINGDOM_APPROVAL_TYPE_HASH = keccak256(
+export const MIDAS_TREASURY_APPROVAL_TYPE_HASH = keccak256(
   toUtf8Bytes(
     'setMasterContractApproval(string warning,address user,address masterContract,bool approvalState,uint256 nonce)'
   )
@@ -54,7 +54,7 @@ export const getMidasTreasuryDomainSeparator = (
     )
   );
 
-export const getMidasKingdomApprovalDigest = (
+export const getMidasTreasuryApprovalDigest = (
   midasKingdom: MasterContractManager,
   user: SignerWithAddress,
   masterContractAddress: string,
@@ -69,7 +69,7 @@ export const getMidasKingdomApprovalDigest = (
   const message = defaultAbiCoder.encode(
     ['bytes32', 'bytes32', 'address', 'address', 'bool', 'uint256'],
     [
-      MIDAS_KINGDOM_APPROVAL_TYPE_HASH,
+      MIDAS_TREASURY_APPROVAL_TYPE_HASH,
       approveState
         ? keccak256(
             toUtf8Bytes(
@@ -114,7 +114,7 @@ export const setMasterContractApproval = async (
       );
   const nonce = await masterKingdom.nonces(user.address);
   const chainId = (await user.provider?.getNetwork())?.chainId;
-  const digest = getMidasKingdomApprovalDigest(
+  const digest = getMidasTreasuryApprovalDigest(
     masterKingdom,
     user,
     masterContractAddress,
@@ -137,3 +137,13 @@ export const setMasterContractApproval = async (
       s
     );
 };
+
+export const advanceTime = (time: number, _ethers: typeof ethers) =>
+  _ethers.provider.send('evm_increaseTime', [time]);
+
+export const advanceBlock = (_ethers: typeof ethers) =>
+  _ethers.provider.send('evm_mine', []);
+
+// Defaults to e18 using amount * 10^18
+export const getBigNumber = (amount: number, decimals = 18) =>
+  BigNumber.from(amount).mul(BigNumber.from(10).pow(decimals));

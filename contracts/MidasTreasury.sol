@@ -21,6 +21,8 @@ import "./MasterContractManager.sol";
  *@import Rebasing tokens are not supported and WILL cause loss of funds.
  */
 contract MidasTreasury is Ownable {
+    /*********************************** LIBRARY ***********************************/
+
     using SafeERC20 for IERC20;
     using RebaseLibrary for Rebase;
     using SafeCast for uint256;
