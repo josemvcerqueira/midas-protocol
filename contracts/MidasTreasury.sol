@@ -138,8 +138,8 @@ contract MidasTreasury is Ownable {
      *@param account The account to be managed
      */
     modifier allowed(address account) {
-        // If it is not the msg.sender not MK accessing this account, we need to check if the owner of the account has approved the masterContract
-        if (account != _msgSender() || account != address(this)) {
+        // If the account is not the sender or the Midas Treasury, it means it is a contract accessing in behalf o the user so we need to check for permissions
+        if (account != _msgSender() && account != address(this)) {
             address masterContract = MASTER_CONTRACT_MANAGER.masterContractOf(
                 _msgSender()
             );

@@ -17,13 +17,12 @@ export const MIDAS_TREASURY_APPROVAL_TYPE_HASH = keccak256(
   )
 );
 
-export const deploy = async (
+export const multiDeploy = async (
   x: ReadonlyArray<string>,
-  y: Array<Array<unknown> | undefined> = [],
-  z: ReadonlyArray<SignerWithAddress> = []
+  y: Array<Array<unknown> | undefined> = []
 ): Promise<any> => {
   const contractFactories = await Promise.all(
-    x.map((name, index) => ethers.getContractFactory(name, z[index]))
+    x.map((name) => ethers.getContractFactory(name))
   );
 
   return Promise.all(
@@ -31,6 +30,14 @@ export const deploy = async (
       factory.deploy(...(y[index] || []))
     )
   );
+};
+
+export const deploy = async (
+  name: string,
+  parameters: Array<unknown> = []
+): Promise<any> => {
+  const factory = await ethers.getContractFactory(name);
+  return await factory.deploy(...parameters);
 };
 
 export const getMidasTreasuryDomainSeparator = (

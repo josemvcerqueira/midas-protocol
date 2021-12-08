@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 
 import MasterContractFactoryJson from '../artifacts/contracts/MasterContractFactory.sol/MasterContractFactory.json';
-import { deploy } from '../lib/test-utils';
+import { multiDeploy } from '../lib/test-utils';
 import { MasterContractFactory, MockMasterContract } from '../typechain';
 
 describe('MasterContractFactory', () => {
@@ -22,7 +22,7 @@ describe('MasterContractFactory', () => {
   );
 
   beforeEach(async () => {
-    [mockMasterContract, masterContractFactory] = await deploy(
+    [mockMasterContract, masterContractFactory] = await multiDeploy(
       ['MockMasterContract', 'MasterContractFactory'],
       []
     );

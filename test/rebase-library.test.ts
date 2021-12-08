@@ -8,7 +8,7 @@ describe('RebaseLibrary', () => {
   let mockRebaseLibrary: MockRebaseLibrary;
 
   beforeEach(async () => {
-    [mockRebaseLibrary] = await deploy(['MockRebaseLibrary']);
+    mockRebaseLibrary = await deploy('MockRebaseLibrary');
   });
 
   describe('function toBase', () => {

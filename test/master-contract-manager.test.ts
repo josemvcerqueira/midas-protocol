@@ -5,8 +5,8 @@ import { ethers } from 'hardhat';
 
 import { PRIVATE_KEYS } from '../lib/constants';
 import {
-  deploy,
   getMidasTreasuryDomainSeparator,
+  multiDeploy,
   setMasterContractApproval,
 } from '../lib/test-utils';
 import { MasterContractManager, MockMasterContract } from '../typechain';
@@ -18,10 +18,9 @@ describe('MasterContractManager', () => {
   let alice: SignerWithAddress;
 
   beforeEach(async () => {
-    [mockMasterContract, masterContractManager] = await deploy(
+    [mockMasterContract, masterContractManager] = await multiDeploy(
       ['MockMasterContract', 'MasterContractManager'],
-      [],
-      [bob, bob]
+      []
     );
 
     [bob, alice] = await ethers.getSigners();
