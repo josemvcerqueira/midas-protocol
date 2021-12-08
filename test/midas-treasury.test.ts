@@ -8,6 +8,7 @@ import { advanceTime, multiDeploy } from '../lib/test-utils';
 import {
   MasterContractManager,
   MockERC20,
+  MockERC20NoSupply,
   MockMasterContract,
   MockMidasTreasury,
   MockStrategy,
@@ -58,6 +59,9 @@ describe('MidasTreasury', () => {
   let mockStrategy: MockStrategy;
   let masterContractManager: MasterContractManager;
   let mockMasterContract: MockMasterContract;
+  // @notice unregistered masterContract to test the allowed modifier
+  let mockMasterContract2: MockMasterContract;
+  let mockERC20NoSupply: MockERC20NoSupply;
 
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -68,11 +72,31 @@ describe('MidasTreasury', () => {
     // First signer is the owner of all contracts by default
     [owner, alice, bob, jose] = await ethers.getSigners();
 
-    [mockERC20, WETH, masterContractManager, mockMasterContract] =
-      await multiDeploy(
-        ['MockERC20', 'WETH9', 'MasterContractManager', 'MockMasterContract'],
-        [['MockERC20', 'M20', ERC20_TOTAL_SUPPLY], [], [], []]
-      );
+    [
+      mockERC20,
+      WETH,
+      masterContractManager,
+      mockMasterContract,
+      mockMasterContract2,
+      mockERC20NoSupply,
+    ] = await multiDeploy(
+      [
+        'MockERC20',
+        'WETH9',
+        'MasterContractManager',
+        'MockMasterContract',
+        'MockMasterContract',
+        'MockERC20NoSupply',
+      ],
+      [
+        ['MockERC20', 'M20', ERC20_TOTAL_SUPPLY],
+        [],
+        [],
+        [],
+        [],
+        ['MockERC20NoSupply', 'M20NoSupply'],
+      ]
+    );
 
     [mockMidasTreasury] = await multiDeploy(
       ['MockMidasTreasury'],
@@ -103,10 +127,11 @@ describe('MidasTreasury', () => {
       mockERC20
         .connect(jose)
         .approve(mockMidasTreasury.address, ERC20_TOTAL_SUPPLY),
-      masterContractManager.clone(
-        mockMasterContract.address,
-        mockMasterContractData
-      ),
+      mockMasterContract.initialize(mockMasterContractData),
+      mockMasterContract.register(masterContractManager.address),
+      mockMasterContract.setMidasTreasury(mockMidasTreasury.address),
+      mockMasterContract2.initialize(mockMasterContractData),
+      mockMasterContract2.setMidasTreasury(mockMidasTreasury.address),
     ]);
 
     // 2 weeks
@@ -119,6 +144,7 @@ describe('MidasTreasury', () => {
       mockMidasTreasury
         .connect(owner)
         .setStrategyTargetPercentage(mockERC20.address, 20),
+      mockMasterContract.setMidasTreasury(mockMidasTreasury.address),
     ]);
   });
 
@@ -235,6 +261,55 @@ describe('MidasTreasury', () => {
       );
 
       await expect(toShare(COMPUTATIONAL_LIMIT, false)).to.be.revertedWith('');
+    });
+  });
+
+  describe('function: deposit', () => {
+    it('checks for master contract permission if the sender is not the user or the contract itself', async () => {
+      await expect(
+        mockMasterContract2.connect(alice).deposit(mockERC20.address, 1000)
+      ).to.revertedWith('MK: No Master Contract found');
+      await expect(
+        mockMasterContract.connect(alice).deposit(mockERC20.address, 1000)
+      ).to.revertedWith('MK: Transfer not approved');
+    });
+
+    it('prevents shares to be given to the ZERO ADDRESS', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(
+            mockERC20.address,
+            alice.address,
+            ethers.constants.AddressZero,
+            1000,
+            0
+          )
+      ).to.revertedWith('MK: no burn funds');
+    });
+
+    it('prevents non deployed ERC20 tokens to be deposited', async () => {
+      await expect(
+        mockMidasTreasury.connect(alice).deposit(
+          // She is an EOA, not a deployed ERC20, so should throw
+          alice.address,
+          alice.address,
+          alice.address,
+          1000,
+          0
+        )
+      ).to.revertedWith('');
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(
+            mockERC20NoSupply.address,
+            alice.address,
+            alice.address,
+            1000,
+            0
+          )
+      ).to.revertedWith('MK: ERC20 not deployed');
     });
   });
 });

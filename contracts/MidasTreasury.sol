@@ -138,8 +138,8 @@ contract MidasTreasury is Ownable {
      *@param account The account to be managed
      */
     modifier allowed(address account) {
-        // If the account is not the sender or the Midas Treasury, it means it is a contract accessing in behalf o the user so we need to check for permissions
-        if (account != _msgSender() && account != address(this)) {
+        // If the account is not the sender, it means it is a contract accessing in behalf o the user so we need to check for permissions
+        if (account != _msgSender()) {
             address masterContract = MASTER_CONTRACT_MANAGER.masterContractOf(
                 _msgSender()
             );
@@ -257,17 +257,6 @@ contract MidasTreasury is Ownable {
             amount = total.toElastic(shares, true);
         }
 
-        /* Midas Kingdom cannot deposit to itself
-         * For ETH, the entire balance is available
-         * During a flash loan we might not be able to invest the deposit amount so we will not allow deposits
-         */
-        require(
-            from != address(this) ||
-                _token == USE_ETHEREUM ||
-                amount <= _tokenBalanceOf(token) - total.elastic,
-            "MK: Skim too much"
-        );
-
         // We add the new shares to the recipient
         balanceOf[token][to] += shares;
         // We increase the total amount of shares of this ERC20 in the vault
@@ -278,10 +267,10 @@ contract MidasTreasury is Ownable {
         totals[token] = total;
 
         if (_token == USE_ETHEREUM) {
+            require(msg.value >= amount, "MK: not enough ETH");
             // Get WETH from the msg.value
             IWETH(address(token)).deposit{value: amount}();
-            // Security vault cannot transfer from itself || deposit in itself
-        } else if (from != address(this)) {
+        } else {
             // If it is an ERC20 use the transferFrom
             token.safeTransferFrom(from, address(this), amount);
         }
