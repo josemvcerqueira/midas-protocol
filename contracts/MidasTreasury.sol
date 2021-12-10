@@ -138,7 +138,7 @@ contract MidasTreasury is Ownable {
      *@param account The account to be managed
      */
     modifier allowed(address account) {
-        // If the account is not the sender, it means it is a contract accessing in behalf o the user so we need to check for permissions
+        // If the account is not the sender, it means it is a contract accessing in behalf of a user, so we need to check for permission
         if (account != _msgSender()) {
             address masterContract = MASTER_CONTRACT_MANAGER.masterContractOf(
                 _msgSender()
@@ -267,7 +267,7 @@ contract MidasTreasury is Ownable {
         totals[token] = total;
 
         if (_token == USE_ETHEREUM) {
-            require(msg.value >= amount, "MK: not enough ETH");
+            if (msg.value < amount) revert("MK: not enough ETH");
             // Get WETH from the msg.value
             IWETH(address(token)).deposit{value: amount}();
         } else {
@@ -312,14 +312,16 @@ contract MidasTreasury is Ownable {
             amount = total.toElastic(shares, false);
         }
 
-        balanceOf[token][from] -= shares;
-        total.elastic -= amount.toUint128();
-        total.base -= shares.toUint128();
+        uint128 newBase = total.base - shares.toUint128();
 
         require(
-            total.base >= MINIMUM_SHARE_BALANCE || total.base == 0,
+            newBase >= MINIMUM_SHARE_BALANCE || newBase == 0,
             "MK: cannot be empty"
         );
+
+        balanceOf[token][from] -= shares;
+        total.elastic -= amount.toUint128();
+        total.base = newBase;
 
         totals[token] = total;
 

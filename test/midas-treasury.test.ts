@@ -122,9 +122,6 @@ describe('MidasTreasury', () => {
         .connect(alice)
         .approve(mockMidasTreasury.address, ERC20_TOTAL_SUPPLY),
       mockERC20
-        .connect(bob)
-        .approve(mockMidasTreasury.address, ERC20_TOTAL_SUPPLY),
-      mockERC20
         .connect(jose)
         .approve(mockMidasTreasury.address, ERC20_TOTAL_SUPPLY),
       mockMasterContract.initialize(mockMasterContractData),
@@ -132,6 +129,8 @@ describe('MidasTreasury', () => {
       mockMasterContract.setMidasTreasury(mockMidasTreasury.address),
       mockMasterContract2.initialize(mockMasterContractData),
       mockMasterContract2.setMidasTreasury(mockMidasTreasury.address),
+      // @notice WETH needs a deposit to have supply
+      WETH.connect(owner).deposit({ value: ethers.utils.parseEther('10') }),
     ]);
 
     // 2 weeks
@@ -310,6 +309,157 @@ describe('MidasTreasury', () => {
             0
           )
       ).to.revertedWith('MK: ERC20 not deployed');
+    });
+    it('does not update the state if you deposit below the minimum share balance', async () => {
+      const tokenData = await mockMidasTreasury.totals(mockERC20.address);
+      expect(tokenData.base).to.be.equal(0);
+      expect(tokenData.elastic).to.be.equal(0);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 1, 0)
+      ).to.not.emit(mockMidasTreasury, 'LogDeposit');
+      const tokenDataAfterUpdate = await mockMidasTreasury.totals(
+        mockERC20.address
+      );
+      expect(tokenDataAfterUpdate.base).to.be.equal(0);
+      expect(tokenDataAfterUpdate.elastic).to.be.equal(0);
+    });
+    it('reverts if user does not send ETH', async () => {
+      await expect(
+        mockMidasTreasury.connect(alice).deposit(
+          ethers.constants.AddressZero,
+          alice.address,
+          alice.address,
+          ethers.utils.parseEther('100'),
+          0,
+          // @notice sends 1 ETH less
+          { value: ethers.utils.parseEther('99') }
+        )
+      ).to.revertedWith('MK: not enough ETH');
+    });
+    it('reverts if the user does approve or has enough ERC20 on their account', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(bob)
+          .deposit(
+            mockERC20.address,
+            bob.address,
+            bob.address,
+            ethers.utils.parseEther('100'),
+            0
+          )
+      ).to.revertedWith('ERC20: transfer amount exceeds allowance');
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(
+            mockERC20.address,
+            alice.address,
+            alice.address,
+            ethers.utils.parseEther('5000'),
+            0
+          )
+      ).to.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+    it('updates the state properly and emits LogDepositEvent on an ERC20 deposit', async () => {
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(0);
+      const tokenData = await mockMidasTreasury.totals(mockERC20.address);
+      expect(tokenData.base).to.be.equal(0);
+      expect(tokenData.elastic).to.be.equal(0);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 1000, 0)
+      )
+        .to.emit(mockMidasTreasury, 'LogDeposit')
+        .withArgs(mockERC20.address, alice.address, alice.address, 1000, 1000);
+      const tokenDataAfterUpdate = await mockMidasTreasury.totals(
+        mockERC20.address
+      );
+      expect(tokenDataAfterUpdate.base).to.be.equal(1000);
+      expect(tokenDataAfterUpdate.elastic).to.be.equal(1000);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(1000);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 700, 0)
+      )
+        .to.emit(mockMidasTreasury, 'LogDeposit')
+        .withArgs(mockERC20.address, alice.address, alice.address, 700, 700);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(1700);
+      const tokenDataAfterUpdate2 = await mockMidasTreasury.totals(
+        mockERC20.address
+      );
+      expect(tokenDataAfterUpdate2.base).to.be.equal(1700);
+      expect(tokenDataAfterUpdate2.elastic).to.be.equal(1700);
+
+      // @notice add profit to make shares/amount more complex
+      await mockMidasTreasury.connect(owner).addProfit(mockERC20.address, 1500);
+
+      await expect(
+        mockMidasTreasury
+          .connect(jose)
+          // @notice also tests that jose can deposit to alice and also tests when u deposit shares instead of amount
+          .deposit(mockERC20.address, jose.address, alice.address, 0, 25_000)
+      )
+        .to.emit(mockMidasTreasury, 'LogDeposit')
+        .withArgs(
+          mockERC20.address,
+          jose.address,
+          alice.address,
+          47_059,
+          25_000
+        );
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(26_700);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.be.equal(0);
+      const tokenDataAfterUpdate3 = await mockMidasTreasury.totals(
+        mockERC20.address
+      );
+      expect(tokenDataAfterUpdate3.base).to.be.equal(26_700);
+      expect(tokenDataAfterUpdate3.elastic).to.be.equal(50_259);
+    });
+    it('accepts ETH deposits', async () => {
+      // @notice the previous test already checks for all logic so this test can be simpler
+
+      const depositAmount = ethers.utils.parseEther('200');
+      expect(
+        await mockMidasTreasury.balanceOf(WETH.address, jose.address)
+      ).to.be.equal(0);
+      await expect(
+        mockMidasTreasury.connect(jose).deposit(
+          // @notice ADDRESS_ZERO represents an ETH deposit
+          ethers.constants.AddressZero,
+          jose.address,
+          jose.address,
+          depositAmount,
+          0,
+          {
+            value: depositAmount,
+          }
+        )
+      )
+        .to.emit(mockMidasTreasury, 'LogDeposit')
+        .withArgs(
+          WETH.address,
+          jose.address,
+          jose.address,
+          depositAmount,
+          depositAmount
+        );
+      expect(
+        await mockMidasTreasury.balanceOf(WETH.address, jose.address)
+      ).to.be.equal(depositAmount);
     });
   });
 });
