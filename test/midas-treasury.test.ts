@@ -668,35 +668,71 @@ describe('MidasTreasury', () => {
     });
   });
   describe('function: transfer', () => {
-    // it.only('checks for master contract permission if the sender is not the user', async () => {
-    //   await mockMidasTreasury
-    //     .connect(alice)
-    //     .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
-    //   await expect(
-    //     mockMasterContract2
-    //       .connect(alice)
-    //       .midasTransfer(mockERC20.address, 10_000, jose.address)
-    //   ).to.revertedWith('MK: No Master Contract found');
-    //   await expect(
-    //     mockMasterContract
-    //       .connect(alice)
-    //       .midasTransfer(mockERC20.address, 10_000, jose.address)
-    //   ).to.revertedWith('MK: Transfer not approved');
-    //   await masterContractManager
-    //     .connect(alice)
-    //     .setMasterContractApproval(
-    //       alice.address,
-    //       mockMasterContract.address,
-    //       true,
-    //       0,
-    //       '0x0000000000000000000000000000000000000000000000000000000000000000',
-    //       '0x0000000000000000000000000000000000000000000000000000000000000000'
-    //     );
-    //   await expect(
-    //     mockMidasTreasury
-    //       .connect(alice)
-    //       .transfer(mockERC20.address, alice.address)
-    //   ).to.emit(mockMidasTreasury, 'LogDeposit');
-    // });
+    it('checks for master contract permission if the sender is not the user', async () => {
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      await expect(
+        mockMasterContract2
+          .connect(alice)
+          .midasTransfer(mockERC20.address, jose.address, 10_000)
+      ).to.revertedWith('MK: No Master Contract found');
+      await expect(
+        mockMasterContract
+          .connect(alice)
+          .midasTransfer(mockERC20.address, jose.address, 10_000)
+      ).to.revertedWith('MK: Transfer not approved');
+      await masterContractManager
+        .connect(alice)
+        .setMasterContractApproval(
+          alice.address,
+          mockMasterContract.address,
+          true,
+          0,
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+          '0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+      await expect(
+        mockMasterContract
+          .connect(alice)
+          .midasTransfer(mockERC20.address, jose.address, 10_000)
+      ).to.emit(mockMidasTreasury, 'LogTransfer');
+    });
+    it('does not allow shares to be burned', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .transfer(
+            mockERC20.address,
+            alice.address,
+            ethers.constants.AddressZero,
+            10
+          )
+      ).to.revertedWith('MK: no burn funds');
+    });
+    it('allows a user to transfer his shares to another', async () => {
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(10_000);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.be.equal(0);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .transfer(mockERC20.address, alice.address, jose.address, 5000)
+      )
+        .to.emit(mockMidasTreasury, 'LogTransfer')
+        .withArgs(mockERC20.address, alice.address, jose.address, 5000);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(5000);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.be.equal(5000);
+    });
   });
 });

@@ -51,8 +51,8 @@ contract MockMasterContract is ERC20Upgradeable, IMasterContract {
 
     function midasTransfer(
         IERC20 token,
-        uint256 shares,
-        address to
+        address to,
+        uint256 shares
     ) external {
         Midas.transfer(token, msg.sender, to, shares);
     }
