@@ -67,10 +67,12 @@ describe('MidasTreasury', () => {
   let bob: SignerWithAddress;
   let jose: SignerWithAddress;
   let owner: SignerWithAddress;
+  // User that makes no TX
+  let nujoud: SignerWithAddress;
 
   beforeEach(async () => {
     // First signer is the owner of all contracts by default
-    [owner, alice, bob, jose] = await ethers.getSigners();
+    [owner, alice, bob, jose, nujoud] = await ethers.getSigners();
 
     [
       mockERC20,
@@ -115,6 +117,9 @@ describe('MidasTreasury', () => {
       mockMidasTreasury
         .connect(owner)
         .setStrategy(mockERC20.address, mockStrategy.address),
+      masterContractManager
+        .connect(owner)
+        .whitelistMasterContract(mockMasterContract.address, true),
       mockERC20
         .connect(owner)
         .approve(mockMidasTreasury.address, ERC20_TOTAL_SUPPLY),
@@ -264,13 +269,28 @@ describe('MidasTreasury', () => {
   });
 
   describe('function: deposit', () => {
-    it('checks for master contract permission if the sender is not the user or the contract itself', async () => {
+    it('checks for master contract permission if the sender is not the user', async () => {
       await expect(
         mockMasterContract2.connect(alice).deposit(mockERC20.address, 1000)
       ).to.revertedWith('MK: No Master Contract found');
       await expect(
         mockMasterContract.connect(alice).deposit(mockERC20.address, 1000)
       ).to.revertedWith('MK: Transfer not approved');
+      await masterContractManager
+        .connect(alice)
+        .setMasterContractApproval(
+          alice.address,
+          mockMasterContract.address,
+          true,
+          0,
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+          '0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 1000, 0)
+      ).to.emit(mockMidasTreasury, 'LogDeposit');
     });
 
     it('prevents shares to be given to the ZERO ADDRESS', async () => {
@@ -325,7 +345,7 @@ describe('MidasTreasury', () => {
       expect(tokenDataAfterUpdate.base).to.be.equal(0);
       expect(tokenDataAfterUpdate.elastic).to.be.equal(0);
     });
-    it('reverts if user does not send ETH', async () => {
+    it('reverts if user does not send enough ETH', async () => {
       await expect(
         mockMidasTreasury.connect(alice).deposit(
           ethers.constants.AddressZero,
@@ -338,7 +358,7 @@ describe('MidasTreasury', () => {
         )
       ).to.revertedWith('MK: not enough ETH');
     });
-    it('reverts if the user does approve or has enough ERC20 on their account', async () => {
+    it('reverts if the user does approve or does not have enough ERC20 on their account', async () => {
       await expect(
         mockMidasTreasury
           .connect(bob)
@@ -460,6 +480,195 @@ describe('MidasTreasury', () => {
       expect(
         await mockMidasTreasury.balanceOf(WETH.address, jose.address)
       ).to.be.equal(depositAmount);
+    });
+  });
+  describe('function: withdraw', () => {
+    it('checks for master contract permission if the sender is not the user', async () => {
+      await expect(
+        mockMasterContract2.connect(alice).withdraw(mockERC20.address, 1000)
+      ).to.revertedWith('MK: No Master Contract found');
+      await expect(
+        mockMasterContract.connect(alice).withdraw(mockERC20.address, 1000)
+      ).to.revertedWith('MK: Transfer not approved');
+      await Promise.all([
+        masterContractManager
+          .connect(alice)
+          .setMasterContractApproval(
+            alice.address,
+            mockMasterContract.address,
+            true,
+            0,
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            '0x0000000000000000000000000000000000000000000000000000000000000000'
+          ),
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0),
+      ]);
+
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .withdraw(mockERC20.address, alice.address, alice.address, 10_000, 0)
+      ).to.emit(mockMidasTreasury, 'LogWithdraw');
+    });
+    it('does not allow to burn funds to the ZERO ADDRESS', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .withdraw(
+            mockERC20.address,
+            alice.address,
+            ethers.constants.AddressZero,
+            1000,
+            0
+          )
+      ).to.revertedWith('MK: no burn funds');
+    });
+    it('does not allow to leave shares below the minimum share balance', async () => {
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .withdraw(mockERC20.address, alice.address, alice.address, 9999, 0)
+      ).to.revertedWith('MK: cannot be empty');
+    });
+    it('does not allow a user to withdraw more tokens than he/she deposited', async () => {
+      await Promise.all([
+        // @notice test amount logic
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0),
+        // @notice test shares logic
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(
+            ethers.constants.AddressZero,
+            alice.address,
+            alice.address,
+            0,
+            ethers.utils.parseEther('1'),
+            {
+              value: ethers.utils.parseEther('1'),
+            }
+          ),
+      ]);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .withdraw(mockERC20.address, alice.address, alice.address, 10_001, 0)
+        // underflow error balanceOf[token][from] -= shares;
+      ).to.revertedWith('');
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .withdraw(
+            ethers.constants.AddressZero,
+            alice.address,
+            alice.address,
+            0,
+            ethers.utils.parseEther('1.1')
+          )
+        // underflow error balanceOf[token][from] -= shares;
+      ).to.revertedWith('');
+    });
+    it('allows ERC20 to be withdrawn', async () => {
+      await Promise.all([
+        mockMidasTreasury
+          .connect(alice)
+          // @notice also testing that you can give your shares to someone else
+          .deposit(mockERC20.address, alice.address, jose.address, 10_000, 0),
+        mockMidasTreasury
+          .connect(alice)
+          .deposit(mockERC20.address, alice.address, alice.address, 0, 1000),
+      ]);
+
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.be.equal(10_000);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(1000);
+      const totals1 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(totals1.base).to.equal(11_000);
+      expect(totals1.elastic).to.equal(11_000);
+
+      await mockMidasTreasury.addProfit(mockERC20.address, 5000);
+
+      await expect(
+        mockMidasTreasury
+          .connect(jose)
+          .withdraw(mockERC20.address, jose.address, alice.address, 0, 5000)
+      )
+        .to.emit(mockMidasTreasury, 'LogWithdraw')
+        .withArgs(mockERC20.address, jose.address, alice.address, 7272, 5000);
+
+      const totals2 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(totals2.base).to.equal(6000);
+      expect(totals2.elastic).to.equal(8728);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.equal(5000);
+      await expect(
+        mockMidasTreasury
+          .connect(jose)
+          .withdraw(mockERC20.address, jose.address, alice.address, 7273, 0)
+      )
+        .to.emit(mockMidasTreasury, 'LogWithdraw')
+        .withArgs(mockERC20.address, jose.address, alice.address, 7273, 5000);
+      const totals3 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(totals3.base).to.equal(1000);
+      expect(totals3.elastic).to.equal(1455);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, jose.address)
+      ).to.equal(0);
+    });
+    it('allows ETH to be withdrawn', async () => {
+      const depositAmount = ethers.utils.parseEther('200');
+      expect(
+        await mockMidasTreasury.balanceOf(WETH.address, jose.address)
+      ).to.be.equal(0);
+      await mockMidasTreasury.connect(jose).deposit(
+        // @notice ADDRESS_ZERO represents an ETH deposit
+        ethers.constants.AddressZero,
+        jose.address,
+        jose.address,
+        depositAmount,
+        0,
+        {
+          value: depositAmount,
+        }
+      );
+      expect(
+        await mockMidasTreasury.balanceOf(WETH.address, jose.address)
+      ).to.be.equal(depositAmount);
+      await expect(
+        mockMidasTreasury.connect(jose).withdraw(
+          ethers.constants.AddressZero,
+          jose.address,
+          // @notice withdraws the ETH to nujoud. Nujoud did not do any TX so it is easy to calculate her balance
+          nujoud.address,
+          0,
+          depositAmount
+        )
+      )
+        .to.emit(mockMidasTreasury, 'LogWithdraw')
+        .withArgs(
+          WETH.address,
+          jose.address,
+          nujoud.address,
+          depositAmount,
+          depositAmount
+        );
+      expect(
+        await mockMidasTreasury.balanceOf(WETH.address, jose.address)
+      ).to.be.equal(0);
+      expect(await nujoud.getBalance()).to.be.equal(
+        // @notice default 10_000 + 200 from jose
+        ethers.utils.parseEther('10200')
+      );
     });
   });
 });

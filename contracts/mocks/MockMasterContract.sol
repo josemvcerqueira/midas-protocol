@@ -42,6 +42,10 @@ contract MockMasterContract is ERC20Upgradeable, IMasterContract {
     }
 
     function deposit(IERC20 token, uint256 amount) external {
-        Midas.deposit(token, msg.sender, address(this), amount, 0);
+        Midas.deposit(token, msg.sender, msg.sender, amount, 0);
+    }
+
+    function withdraw(IERC20 token, uint256 amount) external {
+        Midas.withdraw(token, msg.sender, msg.sender, amount, 0);
     }
 }

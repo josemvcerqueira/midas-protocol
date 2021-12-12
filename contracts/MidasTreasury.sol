@@ -111,7 +111,6 @@ contract MidasTreasury is Ownable {
     //@notice balance of a token per address
     mapping(IERC20 => mapping(address => uint256)) public balanceOf;
 
-    //@notice Rebase from amount to share
     mapping(IERC20 => Rebase) public totals;
 
     mapping(IERC20 => IStrategy) public strategy;
@@ -163,7 +162,7 @@ contract MidasTreasury is Ownable {
         _;
     }
 
-    /*********************************** PRIUATE FUNCTIONS ***********************************/
+    /*********************************** PRIVATE FUNCTIONS ***********************************/
 
     /*
      *@dev Returns the total balance of an ERC20 this contract and master contract holds (estimate)
@@ -325,7 +324,7 @@ contract MidasTreasury is Ownable {
 
         totals[token] = total;
 
-        if (token == USE_ETHEREUM) {
+        if (_token == USE_ETHEREUM) {
             IWETH(address(WETH)).withdraw(amount);
 
             // solhint-disable-next-line avoid-low-level-calls
