@@ -287,9 +287,7 @@ describe('MidasTreasury', () => {
           '0x0000000000000000000000000000000000000000000000000000000000000000'
         );
       await expect(
-        mockMidasTreasury
-          .connect(alice)
-          .deposit(mockERC20.address, alice.address, alice.address, 1000, 0)
+        mockMasterContract.connect(alice).deposit(mockERC20.address, 1000)
       ).to.emit(mockMidasTreasury, 'LogDeposit');
     });
 
@@ -507,9 +505,7 @@ describe('MidasTreasury', () => {
       ]);
 
       await expect(
-        mockMidasTreasury
-          .connect(alice)
-          .withdraw(mockERC20.address, alice.address, alice.address, 10_000, 0)
+        mockMasterContract.connect(alice).withdraw(mockERC20.address, 10_000)
       ).to.emit(mockMidasTreasury, 'LogWithdraw');
     });
     it('does not allow to burn funds to the ZERO ADDRESS', async () => {
@@ -670,5 +666,37 @@ describe('MidasTreasury', () => {
         ethers.utils.parseEther('10200')
       );
     });
+  });
+  describe('function: transfer', () => {
+    // it.only('checks for master contract permission if the sender is not the user', async () => {
+    //   await mockMidasTreasury
+    //     .connect(alice)
+    //     .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+    //   await expect(
+    //     mockMasterContract2
+    //       .connect(alice)
+    //       .midasTransfer(mockERC20.address, 10_000, jose.address)
+    //   ).to.revertedWith('MK: No Master Contract found');
+    //   await expect(
+    //     mockMasterContract
+    //       .connect(alice)
+    //       .midasTransfer(mockERC20.address, 10_000, jose.address)
+    //   ).to.revertedWith('MK: Transfer not approved');
+    //   await masterContractManager
+    //     .connect(alice)
+    //     .setMasterContractApproval(
+    //       alice.address,
+    //       mockMasterContract.address,
+    //       true,
+    //       0,
+    //       '0x0000000000000000000000000000000000000000000000000000000000000000',
+    //       '0x0000000000000000000000000000000000000000000000000000000000000000'
+    //     );
+    //   await expect(
+    //     mockMidasTreasury
+    //       .connect(alice)
+    //       .transfer(mockERC20.address, alice.address)
+    //   ).to.emit(mockMidasTreasury, 'LogDeposit');
+    // });
   });
 });
