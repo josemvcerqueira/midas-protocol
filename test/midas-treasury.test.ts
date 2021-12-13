@@ -1014,4 +1014,34 @@ describe('MidasTreasury', () => {
       expect(strategy2.balance).to.be.equal(5000);
     });
   });
+  describe('function: setStrategyTargetPercentage', () => {
+    it('reverts if the caller is not the owner', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .setStrategyTargetPercentage(mockERC20.address, 90)
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+    it('reverts if you set a percentage higher than the maximum allowed', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategyTargetPercentage(mockERC20.address, 99)
+      ).to.revertedWith('MK: target too high');
+    });
+    it('updates the target percentage for a strategy', async () => {
+      const data1 = await mockMidasTreasury.strategyData(mockERC20.address);
+      expect(data1.targetPercentage).to.be.equal(90);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategyTargetPercentage(mockERC20.address, 50)
+      )
+        .to.emit(mockMidasTreasury, 'LogStrategyTargetPercentage')
+        .withArgs(mockERC20.address, 50);
+
+      const data2 = await mockMidasTreasury.strategyData(mockERC20.address);
+      expect(data2.targetPercentage).to.be.equal(50);
+    });
+  });
 });
