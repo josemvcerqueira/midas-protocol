@@ -102,15 +102,15 @@ describe('MidasTreasury', () => {
       ]
     );
 
-    [mockMidasTreasury] = await multiDeploy(
-      ['MockMidasTreasury'],
-      [[WETH.address, masterContractManager.address], [owner]]
-    );
+    mockMidasTreasury = await deploy('MockMidasTreasury', [
+      WETH.address,
+      masterContractManager.address,
+    ]);
 
-    [mockStrategy] = await multiDeploy(
-      ['MockStrategy'],
-      [[mockERC20.address, mockMidasTreasury.address]]
-    );
+    mockStrategy = await deploy('MockStrategy', [
+      mockERC20.address,
+      mockMidasTreasury.address,
+    ]);
 
     await Promise.all([
       mockERC20.connect(owner).transfer(alice.address, ERC20_ALICE_BALANCE),
@@ -1042,6 +1042,246 @@ describe('MidasTreasury', () => {
 
       const data2 = await mockMidasTreasury.strategyData(mockERC20.address);
       expect(data2.targetPercentage).to.be.equal(50);
+    });
+  });
+  describe('function: setStrategy', async () => {
+    it('reverts if the caller is not the owner', async () => {
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .setStrategy(mockERC20.address, mockStrategy.address)
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+    it('sets a new pending strategy if there is no strategy associated with a token', async () => {
+      const ERC20: MockERC20 = await deploy('MockERC20', [
+        'MockERC202',
+        'M20',
+        ERC20_TOTAL_SUPPLY,
+      ]);
+      const data1 = await mockMidasTreasury.strategyData(ERC20.address);
+      expect(data1.strategyStartDate).to.be.equal(0);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(ERC20.address, mockStrategy.address)
+      )
+        .emit(mockMidasTreasury, 'LogStrategyQueued')
+        .withArgs(ERC20.address, mockStrategy.address);
+      const data2 = await mockMidasTreasury.strategyData(ERC20.address);
+      const timestamp = (
+        await ethers.provider.getBlock(await ethers.provider.getBlockNumber())
+      ).timestamp;
+      // @notice 1_209_600 is around two weeks in milliseconds
+      expect(data2.strategyStartDate).to.be.equal(timestamp + 1_209_600);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(mockStrategy.address);
+    });
+    it('reverts if you try to set the pending strategy as the strategy before 2 weeks', async () => {
+      const ERC20: MockERC20 = await deploy('MockERC20', [
+        'MockERC202',
+        'M20',
+        ERC20_TOTAL_SUPPLY,
+      ]);
+      const data1 = await mockMidasTreasury.strategyData(ERC20.address);
+      expect(data1.strategyStartDate).to.be.equal(0);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      await mockMidasTreasury
+        .connect(owner)
+        .setStrategy(ERC20.address, mockStrategy.address);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(ERC20.address, mockStrategy.address)
+      ).to.revertedWith('MK: too early');
+    });
+    it('updates a pending  to a new one if they are different and resets the timestamp', async () => {
+      const ERC20: MockERC20 = await deploy('MockERC20', [
+        'MockERC202',
+        'M20',
+        ERC20_TOTAL_SUPPLY,
+      ]);
+      const mockStrategy2: MockStrategy = await deploy('MockStrategy', [
+        ERC20.address,
+        mockMidasTreasury.address,
+      ]);
+      const data1 = await mockMidasTreasury.strategyData(ERC20.address);
+      expect(data1.strategyStartDate).to.be.equal(0);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      await mockMidasTreasury
+        .connect(owner)
+        .setStrategy(ERC20.address, mockStrategy.address);
+
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(mockStrategy.address);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(ERC20.address, mockStrategy2.address)
+      )
+        .emit(mockMidasTreasury, 'LogStrategyQueued')
+        .withArgs(ERC20.address, mockStrategy2.address);
+      const data3 = await mockMidasTreasury.strategyData(ERC20.address);
+      const timestamp = (
+        await ethers.provider.getBlock(await ethers.provider.getBlockNumber())
+      ).timestamp;
+      // @notice 1_209_600 is around two weeks in milliseconds
+      expect(data3.strategyStartDate).to.be.equal(timestamp + 1_209_600);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(mockStrategy2.address);
+    });
+    it('sets updates a pending strategy to the main strategy after ~2 weeks', async () => {
+      const ERC20: MockERC20 = await deploy('MockERC20', [
+        'MockERC202',
+        'M20',
+        ERC20_TOTAL_SUPPLY,
+      ]);
+      const data1 = await mockMidasTreasury.strategyData(ERC20.address);
+      expect(data1.strategyStartDate).to.be.equal(0);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      await mockMidasTreasury
+        .connect(owner)
+        .setStrategy(ERC20.address, mockStrategy.address);
+
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        ethers.constants.AddressZero
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(mockStrategy.address);
+
+      await advanceTime(1.21e6, ethers);
+
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(ERC20.address, mockStrategy.address)
+      )
+        .emit(mockMidasTreasury, 'LogStrategySet')
+        .withArgs(ERC20.address, mockStrategy.address);
+      const data3 = await mockMidasTreasury.strategyData(ERC20.address);
+      expect(data3.balance).to.be.equal(0);
+      expect(data3.strategyStartDate).to.be.equal(0);
+      expect(await mockMidasTreasury.strategy(ERC20.address)).to.be.equal(
+        mockStrategy.address
+      );
+      expect(
+        await mockMidasTreasury.pendingStrategy(ERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+    });
+    it('updates the state when setting a new main strategy if there is a profit', async () => {
+      const mockStrategy2: MockStrategy = await deploy('MockStrategy', [
+        mockERC20.address,
+        mockMidasTreasury.address,
+      ]);
+
+      await mockMidasTreasury
+        .connect(owner)
+        .deposit(mockERC20.address, owner.address, owner.address, 10_000, 0);
+
+      const total1 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total1.elastic).to.be.equal(10_000);
+
+      await Promise.all([
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(mockERC20.address, mockStrategy2.address),
+        mockStrategy.setProfit(1000),
+      ]);
+      await advanceTime(1.21e6, ethers);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(mockERC20.address, mockStrategy2.address)
+      )
+        .to.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .withArgs(mockERC20.address, 1000);
+
+      const total2 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total2.elastic).to.be.equal(11_000);
+
+      const data = await mockMidasTreasury.strategyData(mockERC20.address);
+      expect(data.balance).to.be.equal(0);
+      expect(data.strategyStartDate).to.be.equal(0);
+      expect(
+        await mockMidasTreasury.pendingStrategy(mockERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      expect(await mockMidasTreasury.strategy(mockERC20.address)).to.be.equal(
+        mockStrategy2.address
+      );
+    });
+    it('updates the state when setting a new main strategy if there is a loss', async () => {
+      const mockStrategy2: MockStrategy = await deploy('MockStrategy', [
+        mockERC20.address,
+        mockMidasTreasury.address,
+      ]);
+
+      await mockMidasTreasury
+        .connect(owner)
+        .deposit(mockERC20.address, owner.address, owner.address, 10_000, 0);
+
+      const total1 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total1.elastic).to.be.equal(10_000);
+
+      await Promise.all([
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(mockERC20.address, mockStrategy2.address),
+        mockStrategy.setProfit(-1000),
+      ]);
+      await advanceTime(1.21e6, ethers);
+      await expect(
+        mockMidasTreasury
+          .connect(owner)
+          .setStrategy(mockERC20.address, mockStrategy2.address)
+      )
+        .to.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .withArgs(mockERC20.address, 1000);
+
+      const total2 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total2.elastic).to.be.equal(9000);
+
+      const data = await mockMidasTreasury.strategyData(mockERC20.address);
+      expect(data.balance).to.be.equal(0);
+      expect(data.strategyStartDate).to.be.equal(0);
+      expect(
+        await mockMidasTreasury.pendingStrategy(mockERC20.address)
+      ).to.be.equal(ethers.constants.AddressZero);
+      expect(await mockMidasTreasury.strategy(mockERC20.address)).to.be.equal(
+        mockStrategy2.address
+      );
     });
   });
 });

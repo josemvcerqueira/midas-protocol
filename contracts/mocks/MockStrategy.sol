@@ -51,7 +51,7 @@ contract MockStrategy is IStrategy {
         actualAmount = amount;
     }
 
-    function exit(uint256 balance)
+    function exit(uint256)
         external
         override
         onlyMidasTreasury
@@ -59,6 +59,6 @@ contract MockStrategy is IStrategy {
     {
         uint256 actualBalance = token.balanceOf(address(this));
         token.safeTransfer(midasTreasury, actualBalance);
-        return int256(actualBalance) - int256(balance);
+        return profit;
     }
 }
