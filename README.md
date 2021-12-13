@@ -1,8 +1,23 @@
-# Advanced Sample Hardhat Project
+# Advanced Hardhat Project
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+This project is a copy from scratch from [SushiSwap Bentobox](https://github.com/sushiswap/bentobox). The [OpenZeppelin contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) were used as buildings blocks due to their great documentation and security. 
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+The whole project is fully tested using mock contracts with the help of [Hardhat](https://hardhat.org/). We also used a couple of helpful development tools such as Typescript to make the development process more smooth with the help of types. Check more packages used below.
+
+This project was made only for educational purposes so I could get a greater understanding of the DeFi Ecosystem.
+
+**Prerequisites**: Make sure you have at least the LTS version of [Node](https://nodejs.org/en/) installed.
+
+**Details**:
+
+ - Solidity 8.10.0
+ - Typescript 4.3.5
+ - ESLint
+ - Prettier
+ - Commitlint
+ - Husky
+
+**Author**: josemvcerqueira | josecerqueira@ilovemochi.com
 
 Try running some of the following tasks:
 
@@ -22,25 +37,11 @@ npx eslint '**/*.{js,ts}' --fix
 npx prettier '**/*.{json,sol,md}' --check
 npx prettier '**/*.{json,sol,md}' --write
 npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
+npx solhint 'contracts/**/*.sol' --
+yarn test
+yarn solhint
+yarn pre-commit
+yarn type-check
+yarn lint
+yarn prepare
 ```
-
-# Etherscan verification
-
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
-
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
-
-```shell
-hardhat run --network ropsten scripts/sample-script.ts
-```
-
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
-
-```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
-```
-
-# Performance optimizations
-
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
