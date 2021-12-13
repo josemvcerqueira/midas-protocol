@@ -71,7 +71,7 @@ contract MidasTreasury is Ownable {
 
     event LogStrategyInvest(IERC20 indexed token, uint256 amount);
 
-    event LogStartegyDivest(IERC20 indexed token, uint256 amount);
+    event LogStrategyDivest(IERC20 indexed token, uint256 amount);
 
     event LogStrategyProfit(IERC20 indexed token, uint256 amount);
 
@@ -484,7 +484,7 @@ contract MidasTreasury is Ownable {
                 uint256 actualAmountIn = _strategy.withdraw(amountIn);
 
                 data.balance -= actualAmountIn.toUint128();
-                emit LogStartegyDivest(token, actualAmountIn);
+                emit LogStrategyDivest(token, actualAmountIn);
             }
         }
 

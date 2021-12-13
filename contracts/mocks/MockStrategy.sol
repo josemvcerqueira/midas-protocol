@@ -11,6 +11,7 @@ contract MockStrategy is IStrategy {
 
     IERC20 public immutable token;
     address public immutable midasTreasury;
+    int256 public profit;
 
     constructor(IERC20 _token, address _midasTreasury) {
         token = _token;
@@ -22,18 +23,22 @@ contract MockStrategy is IStrategy {
         _;
     }
 
+    function setProfit(int256 _profit) external {
+        profit = _profit;
+    }
+
     function invest(uint256) external view override onlyMidasTreasury {
         return;
     }
 
-    function harvest(uint256 balance, address)
+    function harvest(uint256, address)
         external
+        view
         override
         onlyMidasTreasury
-        returns (int256 amount)
+        returns (int256)
     {
-        amount = int256(token.balanceOf(address(this)) - balance);
-        token.safeTransfer(midasTreasury, uint256(amount));
+        return profit;
     }
 
     function withdraw(uint256 amount)
@@ -50,9 +55,10 @@ contract MockStrategy is IStrategy {
         external
         override
         onlyMidasTreasury
-        returns (int256)
+        returns (int256 amountAdded)
     {
-        token.safeTransfer(midasTreasury, balance);
-        return 0;
+        uint256 actualBalance = token.balanceOf(address(this));
+        token.safeTransfer(midasTreasury, actualBalance);
+        return int256(actualBalance) - int256(balance);
     }
 }

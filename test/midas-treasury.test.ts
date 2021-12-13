@@ -146,10 +146,10 @@ describe('MidasTreasury', () => {
       mockMidasTreasury
         .connect(owner)
         .setStrategy(mockERC20.address, mockStrategy.address),
-      // 20%
+      // 90%
       mockMidasTreasury
         .connect(owner)
-        .setStrategyTargetPercentage(mockERC20.address, 20),
+        .setStrategyTargetPercentage(mockERC20.address, 90),
       mockMasterContract.setMidasTreasury(mockMidasTreasury.address),
     ]);
   });
@@ -901,6 +901,117 @@ describe('MidasTreasury', () => {
         );
       const total2 = await mockMidasTreasury.totals(mockERC20.address);
       expect(total2.elastic.toNumber()).to.be.greaterThan(10_000);
+    });
+  });
+  describe('function: harvest', () => {
+    beforeEach(async () => {
+      // @dev initial set up to tokens are invested to the strategy
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      await mockMidasTreasury.harvest(mockERC20.address, true, 10_000);
+    });
+
+    it('does nothing if the strategy has no profit/loss and we do not trigger a rebalance', async () => {
+      await expect(mockMidasTreasury.harvest(mockERC20.address, false, 0))
+        .to.not.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyInvest')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyDivest');
+    });
+    it('updates the state if there is a profit without rebalancing', async () => {
+      await mockStrategy.setProfit(1000);
+      const [total1, strategy1] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total1.elastic).to.be.equal(10_000);
+      expect(strategy1.balance).to.be.equal(9000);
+      await expect(mockMidasTreasury.harvest(mockERC20.address, false, 0))
+        .to.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .withArgs(mockERC20.address, 1000)
+        .to.not.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyInvest')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyDivest');
+      const [total2, strategy2] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total2.elastic).to.be.equal(11_000);
+      expect(strategy2.balance).to.be.equal(10_000);
+    });
+    it('updates the state if there is a loss without rebalancing', async () => {
+      await mockStrategy.setProfit(-1000);
+      const [total1, strategy1] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total1.elastic).to.be.equal(10_000);
+      expect(strategy1.balance).to.be.equal(9000);
+      await expect(mockMidasTreasury.harvest(mockERC20.address, false, 0))
+        .to.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .withArgs(mockERC20.address, 1000)
+        .to.not.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyInvest')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyDivest');
+      const [total2, strategy2] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total2.elastic).to.be.equal(9000);
+      expect(strategy2.balance).to.be.equal(8000);
+    });
+    it('sends tokens to the strategy if a rebalance is triggered and is below the target amount', async () => {
+      const [total1, strategy1] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total1.elastic).to.be.equal(10_000);
+      expect(strategy1.balance).to.be.equal(9000);
+
+      // @dev for rebalance purposes
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 5000, 0);
+
+      await expect(mockMidasTreasury.harvest(mockERC20.address, true, 10_000))
+        .to.emit(mockMidasTreasury, 'LogStrategyInvest')
+        .withArgs(mockERC20.address, 4500)
+        .to.not.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyDivest');
+      const [total2, strategy2] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total2.elastic).to.be.equal(15_000);
+      expect(strategy2.balance).to.be.equal(13_500);
+    });
+    it('it withdraws tokens from the strategy if a rebalance is triggered and is above the target amount', async () => {
+      const [total1, strategy1] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total1.elastic).to.be.equal(10_000);
+      expect(strategy1.balance).to.be.equal(9000);
+
+      // @dev for rebalance purposes
+      await mockMidasTreasury
+        .connect(owner)
+        .setStrategyTargetPercentage(mockERC20.address, 50);
+
+      await expect(mockMidasTreasury.harvest(mockERC20.address, true, 10_000))
+        .to.emit(mockMidasTreasury, 'LogStrategyDivest')
+        .withArgs(mockERC20.address, 4000)
+        .to.not.emit(mockMidasTreasury, 'LogStrategyLoss')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyProfit')
+        .to.not.emit(mockMidasTreasury, 'LogStrategyInvest');
+      const [total2, strategy2] = await Promise.all([
+        mockMidasTreasury.totals(mockERC20.address),
+        mockMidasTreasury.strategyData(mockERC20.address),
+      ]);
+      expect(total2.elastic).to.be.equal(10_000);
+      expect(strategy2.balance).to.be.equal(5000);
     });
   });
 });
