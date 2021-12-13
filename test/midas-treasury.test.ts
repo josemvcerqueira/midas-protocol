@@ -735,4 +735,91 @@ describe('MidasTreasury', () => {
       ).to.be.equal(5000);
     });
   });
+  describe('function: transferMultiple', () => {
+    it('checks for master contract permission if the sender is not the user', async () => {
+      const toArray = [jose.address, bob.address];
+      const sharesArray = [5000, 5000];
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      await expect(
+        mockMasterContract2
+          .connect(alice)
+          .midasTransferMultiple(mockERC20.address, toArray, sharesArray)
+      ).to.revertedWith('MK: No Master Contract found');
+      await expect(
+        mockMasterContract
+          .connect(alice)
+          .midasTransferMultiple(mockERC20.address, toArray, sharesArray)
+      ).to.revertedWith('MK: Transfer not approved');
+      await masterContractManager
+        .connect(alice)
+        .setMasterContractApproval(
+          alice.address,
+          mockMasterContract.address,
+          true,
+          0,
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+          '0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+      await expect(
+        mockMasterContract
+          .connect(alice)
+          .midasTransferMultiple(mockERC20.address, toArray, sharesArray)
+      ).to.emit(mockMidasTreasury, 'LogTransfer');
+    });
+    it('does not allow shares to be burned', async () => {
+      const toArray = [jose.address, ethers.constants.AddressZero];
+      const sharesArray = [5000, 5000];
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .transferMultiple(
+            mockERC20.address,
+            alice.address,
+            toArray,
+            sharesArray
+          )
+      ).to.revertedWith('MK: cannot burn funds');
+    });
+    it('allows to transfer shares to multiple users', async () => {
+      const toArray = [jose.address, bob.address];
+      const sharesArray = [4000, 5000];
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, toArray[0])
+      ).to.be.equal(0);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, toArray[1])
+      ).to.be.equal(0);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(10_000);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .transferMultiple(
+            mockERC20.address,
+            alice.address,
+            toArray,
+            sharesArray
+          )
+      )
+        .to.emit(mockMidasTreasury, 'LogTransfer')
+        .withArgs(mockERC20.address, alice.address, toArray[0], sharesArray[0])
+        .to.emit(mockMidasTreasury, 'LogTransfer')
+        .withArgs(mockERC20.address, alice.address, toArray[1], sharesArray[1]);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, toArray[0])
+      ).to.be.equal(sharesArray[0]);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, toArray[1])
+      ).to.be.equal(sharesArray[1]);
+      expect(
+        await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
+      ).to.be.equal(1000);
+    });
+  });
 });
