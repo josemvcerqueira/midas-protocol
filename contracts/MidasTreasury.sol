@@ -407,7 +407,7 @@ contract MidasTreasury is Ownable {
         // Calculates the fee
         uint256 fee = (amount * FLASH_LOAN_FEE) / FLASH_LOAN_FEE_PRECISION;
 
-        // Sends tokens to the borrowe
+        // Sends tokens to the borrower
         token.safeTransfer(receiver, amount);
 
         // Run arbitrary logic with loan data. This is where arbitrage happens

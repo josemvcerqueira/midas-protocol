@@ -20,22 +20,3 @@ interface IFlashLoanBorrower {
         bytes calldata data
     ) external;
 }
-
-interface IMultiFlashLoanBorrower {
-    /*
-     *@dev This function lends several ERC20 tokens in one TX
-     *@notice all arrays (tokens, amount, fees) should have the length and each index acts like a map key to the same data
-     *@param sender Address which initiated the flash loan
-     *@param tokens Array of ERC20 tokens to be sent to the borrower
-     *@param amounts Array of the amounts for each ERC20 to be sent
-     *@param fees Fees per token to be repaid to the msg.sender
-     *@param data Bytes to be passed to the borrower
-     */
-    function onMultiFlashLoan(
-        address sender,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        uint256[] calldata fees,
-        bytes calldata data
-    ) external;
-}

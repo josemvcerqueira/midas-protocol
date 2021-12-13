@@ -4,11 +4,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 
-import { advanceTime, multiDeploy } from '../lib/test-utils';
+import { advanceTime, deploy, multiDeploy } from '../lib/test-utils';
 import {
   MasterContractManager,
+  MockBorrower,
   MockERC20,
   MockERC20NoSupply,
+  MockMaliciousBorrower,
   MockMasterContract,
   MockMidasTreasury,
   MockStrategy,
@@ -19,7 +21,7 @@ const EXTREME_VALID_VOLUME = ethers.BigNumber.from(2).pow(127);
 // maximum uint128 	2^128 - 1
 const MIDAS_LIMIT = ethers.BigNumber.from(2).pow(128).sub(1);
 // maximum uint256 	2^256 - 1
-const COMPUTATIONAL_LIMIT = ethers.BigNumber.from(2).pow(256).sub(1);
+const COMPUTATIONAL_LIMIT = ethers.constants.MaxUint256;
 const ERC20_TOTAL_SUPPLY = ethers.utils.parseEther('1000000'); // 1 million
 
 const ERC20_ALICE_BALANCE = ethers.utils.parseEther('2000'); // 2_000
@@ -820,6 +822,85 @@ describe('MidasTreasury', () => {
       expect(
         await mockMidasTreasury.balanceOf(mockERC20.address, alice.address)
       ).to.be.equal(1000);
+    });
+  });
+  describe('function: flashLoan', () => {
+    it('reverts if the borrower tries to borrow more than the contract holds', async () => {
+      const mockMaliciousBorrower: MockMaliciousBorrower = await deploy(
+        'MockMaliciousBorrower'
+      );
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .flashLoan(
+            mockMaliciousBorrower.address,
+            alice.address,
+            mockERC20.address,
+            10_000,
+            '0x0000000000000000000000000000000000000000000000000000000000000000'
+          )
+      ).to.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+    it('reverts if the borrower does not pay the right amount including the fee', async () => {
+      const mockMaliciousBorrower: MockMaliciousBorrower = await deploy(
+        'MockMaliciousBorrower'
+      );
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .flashLoan(
+            mockMaliciousBorrower.address,
+            alice.address,
+            mockERC20.address,
+            10_000,
+            '0x0000000000000000000000000000000000000000000000000000000000000000'
+          )
+      ).to.revertedWith('MK: Wrong amount');
+    });
+    it('allows flashloans', async () => {
+      // @notice uses the contract constants
+      const fee = (10_000 * 50) / 1e5;
+
+      const mockBorrower: MockBorrower = await deploy('MockBorrower');
+      // Send tokens to the borrower to pay fee
+      await mockERC20.connect(owner).transfer(mockBorrower.address, 10_000);
+      await mockMidasTreasury
+        .connect(alice)
+        .deposit(mockERC20.address, alice.address, alice.address, 10_000, 0);
+      const total1 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total1.elastic).to.be.equal(10_000);
+      await expect(
+        mockMidasTreasury
+          .connect(alice)
+          .flashLoan(
+            mockBorrower.address,
+            mockBorrower.address,
+            mockERC20.address,
+            10_000,
+            mockMasterContractData
+          )
+      )
+        .to.emit(mockBorrower, 'LogFlashLoan')
+        .withArgs(
+          alice.address,
+          mockERC20.address,
+          10_000,
+          Math.floor(fee),
+          mockMasterContractData
+        )
+        .to.emit(mockMidasTreasury, 'LogFlashLoan')
+        .withArgs(
+          mockBorrower.address,
+          mockERC20.address,
+          10_000,
+          Math.floor(fee),
+          mockBorrower.address
+        );
+      const total2 = await mockMidasTreasury.totals(mockERC20.address);
+      expect(total2.elastic.toNumber()).to.be.greaterThan(10_000);
     });
   });
 });
