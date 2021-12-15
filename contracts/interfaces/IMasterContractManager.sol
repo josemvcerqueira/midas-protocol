@@ -24,4 +24,22 @@ interface IMasterContractManager {
     function masterContractApprovals(address masterContract, address account)
         external
         returns (bool);
+
+    /*
+     *@notice Function to give or remove a master contract control of a user funds
+     *@param user Address which is giving permission
+     *@param masterContract Master contract which will gain or lose permission
+     *@param binary option to give or take permission
+     *@param v -> Part of the signature. (See EIP-191)
+     *@param r -> Part of the signature. (See EIP-191)
+     *@param s -> Part of the signature. (See EIP-191)
+     */
+    function setMasterContractApproval(
+        address user,
+        address masterContract,
+        bool approvalState,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 }
