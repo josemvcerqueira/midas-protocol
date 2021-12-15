@@ -214,7 +214,7 @@ contract MidasTouch is Ownable, IMasterContract, Actions {
         );
         require(
             address(collateral) != address(0),
-            "MT: collateral not an ERC20"
+            "MT: collateral is not an ERC20"
         );
     }
 
@@ -570,6 +570,118 @@ contract MidasTouch is Ownable, IMasterContract, Actions {
         MIDAS_TREASURY.transfer(MONEY, address(this), _feeTo, shares);
 
         emit LogWithdrawFees(_feeTo, feesEarned);
+    }
+
+    function liquidate(
+        address[] calldata users,
+        uint256[] calldata maxBorrowParts,
+        address to,
+        ISwapper swapper
+    ) public {
+        // Need to allow liquidations even if the oracle fails
+        (, uint256 _exchangeRate) = updateExchangeRate();
+
+        // Update the user debt before liquidating
+        accrue();
+
+        uint256 allCollateralShare;
+        uint256 allBorrowAmount;
+        uint256 allBorrowPart;
+
+        Rebase memory _totalBorrow = totalBorrow;
+
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            // Only liquidate if the user is insolvent
+            if (!_isSolvent(user, _exchangeRate)) {
+                uint256 borrowPart;
+                // Updates the user borrow part
+                {
+                    // How much the user is borrowing
+                    uint256 avaliableBorrowPart = userBorrowPart[user];
+                    // Liquidate maxBorrowPart if it is larger than the borrow amount make it equal to it
+                    borrowPart = maxBorrowParts[i] > avaliableBorrowPart
+                        ? avaliableBorrowPart
+                        : maxBorrowParts[i];
+                    // Update the user borrowed part
+                    userBorrowPart[user] = avaliableBorrowPart - borrowPart;
+                }
+
+                // total borrow amount the user owes from the total debt
+                uint256 borrowAmount = _totalBorrow.toElastic(
+                    borrowPart,
+                    false
+                );
+
+                // Shares of the collateral the user owes
+                uint256 collateralShare = MIDAS_TREASURY.toShare(
+                    collateral,
+                    (borrowAmount * LIQUIDATION_MULTIPLIER * _exchangeRate) /
+                        (LIQUIDATION_MULTIPLIER_PRECISION *
+                            EXCHANGE_RATE_PRECISION),
+                    false
+                );
+
+                // Remove collateral from user essentially liquidating him
+                userCollateralShare[user] -= collateralShare;
+                emit LogRemoveCollateral(user, to, collateralShare);
+                emit LogRepay(_msgSender(), user, borrowAmount, borrowPart);
+
+                // Update all paid data
+                allCollateralShare += collateralShare;
+                allBorrowAmount += borrowAmount;
+                allBorrowPart += borrowPart;
+            }
+        }
+
+        require(allBorrowAmount != 0, "MT: no liquidations");
+
+        // Update the global state
+        _totalBorrow.elastic -= allBorrowAmount.toUint128();
+        _totalBorrow.base -= allBorrowPart.toUint128();
+        totalBorrow = _totalBorrow;
+        totalCollateralShare -= allCollateralShare;
+
+        {
+            uint256 distributionAmount = ((((allBorrowAmount *
+                LIQUIDATION_MULTIPLIER) / LIQUIDATION_MULTIPLIER_PRECISION) -
+                allBorrowAmount) * DISTRIBUTION_PART) / DISTRIBUTION_PRECISION;
+            allBorrowAmount += distributionAmount;
+            accrueInfo.feesEarned += distributionAmount.toUint128();
+        }
+
+        uint256 allBorrowShare = MIDAS_TREASURY.toShare(
+            MONEY,
+            allBorrowAmount,
+            true
+        );
+
+        // Give the collateral to the `to` address
+        MIDAS_TREASURY.transfer(
+            collateral,
+            address(this),
+            to,
+            allCollateralShare
+        );
+
+        // If the user wishes to not use his funds he can opt to sell a portion of the collateral to MONEY
+        if (swapper != ISwapper(address(0))) {
+            swapper.swap(
+                collateral,
+                MONEY,
+                _msgSender(),
+                allBorrowShare,
+                allCollateralShare
+            );
+        }
+
+        // Liquidators needs to have enough to cover the owed amount
+        MIDAS_TREASURY.transfer(
+            MONEY,
+            _msgSender(),
+            address(this),
+            allBorrowShare
+        );
     }
 
     /*********************************** PRIVATE FUNCTIONS ***********************************/
